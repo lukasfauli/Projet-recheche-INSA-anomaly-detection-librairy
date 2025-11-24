@@ -1,0 +1,79 @@
+import pandas as pd
+import pywt
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# --------------------------
+# 1. Importer le CSV
+# --------------------------
+# Remplace par le chemin réel de ton fichier
+input_csv = '/home/fauli/Bureau/reading seminar/donnée/data/T24S12-04_E-AL3458.csv'
+df = pd.read_csv(input_csv,sep=';')
+
+
+# Vérifier les colonnes
+print("Colonnes trouvées :", df.columns.tolist())
+
+# Créer un DataFrame pour les signaux débruités
+df_denoised = pd.DataFrame()
+df_denoised['t'] = df['t']  # copier la colonne temps
+
+# --------------------------
+# 2. Paramètres de l'ondelette
+# --------------------------
+wavelet = 'db4'
+
+# Créer un dossier pour les graphiques si nécessaire
+output_dir = 'denoised_plots'
+os.makedirs(output_dir, exist_ok=True)
+
+# --------------------------
+# 3. Débruitage capteur par capteur
+# --------------------------
+for capteur in df.columns:
+    if capteur == 't':
+        continue  # ignorer la colonne temps
+   
+    signal = df[capteur]
+   
+    # Décomposition
+    max_level = pywt.dwt_max_level(len(signal), pywt.Wavelet(wavelet).dec_len)
+    coeffs = pywt.wavedec(signal, wavelet, level=max_level)
+   
+    # Seuil (VisuShrink)
+    sigma = np.median(np.abs(coeffs[-1])) / 0.6745
+    threshold = sigma * np.sqrt(2 * np.log(len(signal)))
+   
+    # Seuillage soft
+    coeffs_thresh = [coeffs[0]]  # approximation non touchée
+    for detail in coeffs[1:]:
+        coeffs_thresh.append(pywt.threshold(detail, threshold, mode='soft'))
+   
+    # Reconstruction du signal débruité
+    signal_denoised = pywt.waverec(coeffs_thresh, wavelet)
+   
+    # S'assurer que la longueur correspond à l'original
+    signal_denoised = signal_denoised[:len(signal)]
+   
+    # Ajouter au DataFrame final
+    df_denoised[capteur] = signal_denoised
+   
+    # --------------------------
+    # 4. Tracer le signal original vs débruité
+    # --------------------------
+    plt.figure(figsize=(12,4))
+    plt.plot(df['t'], signal, label='Original', alpha=0.7)
+    plt.plot(df['t'], signal_denoised, label='Débruité', linewidth=2)
+    plt.xlabel('Temps')
+    plt.ylabel('Valeur')
+    plt.title(f'Débruitage du capteur : {capteur}')
+    plt.legend()
+    plt.tight_layout()
+
+
+    filename = os.path.join(output_dir, f"{capteur}_denoised.png")
+    plt.savefig(filename)
+    plt.close()
+output_csv = "/home/fauli/Bureau/reading seminar/wavelet/results/donnée_denoised1.csv"  
+df_denoised.to_csv(output_csv, sep=';', index=False)

@@ -1,0 +1,274 @@
+---
+title: "BOCPD"
+author: "Untitled"
+date: "2025-11-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r cars}
+library(readr)
+library(tidyverse)
+set.seed(123)
+lignes <- readLines("/home/fauli/Bureau/reading seminar/wavelet/donnée_denoised.csv")
+df<-tibble(ligne=lignes)%>%
+  separate(ligne, into = paste0("X", 1:17), sep = ";", fill = "right")
+df <- df %>% mutate(across(everything(), as.numeric))
+df
+
+#data_vector<- data$nwl1
+#sub_seq<- data_vector[seq(1, length(data_vector), by = 1000)]
+
+
+
+```
+
+```{r}
+ggplot(df, aes(x = seq_along(X2), y = X2)) +
+  geom_line(color = "steelblue", linewidth= 1) +
+  labs(title = "Évolution de la colonne X1",
+       x = "Index des lignes",
+       y = "Valeurs de X1") +
+  theme_minimal()
+
+```
+```{r}
+data_vector=df$X2
+length(data_vector)
+data_vector <- na.omit(data_vector)
+length(data_vector)
+```
+
+
+
+```{r}
+########################################
+# BOCPD robuste générique avec visualisation
+########################################
+
+library(ggplot2)
+
+# ------------------------------
+# Fonction BOCPD tronquée
+# ------------------------------
+bocpd_trunc <- function(x, L, hazard, mu0, kappa0, alpha0, beta0) {
+  x <- as.numeric(na.omit(x))
+  n <- length(x)
+  
+  R <- matrix(0, nrow = n, ncol = L)
+  R[1,1] <- 1
+  params_prev <- list(list(mu = mu0, kappa = kappa0, alpha = alpha0, beta = beta0))
+  
+  pred_student_t <- function(x, mu, kappa, alpha, beta) {
+    nu <- 2*alpha
+    scale2 <- beta*(kappa+1)/(alpha*kappa)
+    if (scale2 <= 0 || !is.finite(scale2)) return(1e-300)
+    val <- dt((x-mu)/sqrt(scale2), df=nu)/sqrt(scale2)
+    max(val, 1e-300)
+  }
+  
+  update_params <- function(x, mu, kappa, alpha, beta) {
+    kappa_n <- kappa + 1
+    mu_n <- (kappa*mu + x)/kappa_n
+    alpha_n <- alpha + 0.5
+    beta_n <- beta + 0.5*(kappa*(x-mu)^2)/kappa_n
+    list(mu=mu_n, kappa=max(kappa_n,1e-6), alpha=max(alpha_n,1e-6), beta=max(beta_n,1e-6))
+  }
+  
+  for (t in 1:n) {
+    xt <- x[t]
+    if (t==1) { params_prev <- list(update_params(xt, mu0,kappa0,alpha0,beta0)); next }
+    
+    mprev <- length(params_prev)
+    m <- min(L, mprev+1)
+    pred_probs <- numeric(mprev)
+    for (i in seq_len(mprev)) pred_probs[i] <- pred_student_t(xt, params_prev[[i]]$mu, params_prev[[i]]$kappa, params_prev[[i]]$alpha, params_prev[[i]]$beta)
+    
+    R_t <- rep(0,L)
+    for (r_prev in 0:(mprev-1)) {
+      r_new_idx <- r_prev+2
+      contrib <- R[t-1,r_prev+1]*pred_probs[r_prev+1]*(1-hazard(r_prev))
+      if (r_new_idx <= L) { R_t[r_new_idx] <- R_t[r_new_idx] + contrib } else { R_t[L] <- R_t[L] + contrib }
+    }
+    cp_prob <- sum(R[t-1,1:mprev] * pred_probs * sapply(0:(mprev-1), hazard))
+    R_t[1] <- R_t[1] + cp_prob
+    
+    s <- sum(R_t)
+    if (!is.finite(s) || s<=0) R_t <- rep(1e-300,L); s <- sum(R_t)
+    R[t,] <- R_t / s
+    
+    params_curr <- vector("list", min(L,t))
+    params_curr[[1]] <- update_params(xt, mu0,kappa0,alpha0,beta0)
+    for (r_prev in 0:(min(mprev-1,L-1))) {
+      prevp <- params_prev[[r_prev+1]]
+      if ((r_prev+2) <= length(params_curr)) params_curr[[r_prev+2]] <- update_params(xt, prevp$mu, prevp$kappa, prevp$alpha, prevp$beta)
+    }
+    params_prev <- params_curr
+  }
+  
+  runlength_map <- apply(R, 1, which.max)-1
+  changepoints <- which(runlength_map==0)
+  changepoints <- changepoints[changepoints != 1]
+  
+  list(R=R, runlength_map=runlength_map, changepoints=changepoints)
+}
+
+# ------------------------------
+# Fonction générique pour exécuter BOCPD
+# ------------------------------
+run_bocpd <- function(data_vector, max_run_length=400, hazard_prob=1/50) {
+  x <- na.omit(data_vector)
+  prior_n <- min(50, length(x))
+  mu0    <- mean(x[1:prior_n])
+  s2     <- var(x[1:prior_n])
+  kappa0 <- 0.001
+  alpha0 <- 1.5
+  beta0  <- s2*0.5
+  
+  hazard_func <- function(r) hazard_prob
+  
+  res <- bocpd_trunc(x, L=max_run_length, hazard=hazard_func,
+                     mu0=mu0, kappa0=kappa0, alpha0=alpha0, beta0=beta0)
+  res$x <- x
+  return(res)
+}
+
+# ------------------------------
+# Exemple d’utilisation
+# ------------------------------
+
+# Remplacer df$X1 par la colonne de ton jeu de données
+res <- run_bocpd(data_vector)
+
+# Changepoints détectés
+cat("Changepoints détectés :\n")
+print(res$changepoints)
+
+# ------------------------------
+# Visualisation avec ggplot2
+# ------------------------------
+df_plot <- data.frame(Index = 1:length(res$x), Value = res$x)
+changepoints <- res$changepoints
+
+ggplot(df_plot, aes(x=Index, y=Value)) +
+  geom_line(color="blue") +
+  geom_vline(xintercept = changepoints, color="red", linetype="dashed", linewidth=1) +
+  ggtitle("BOCPD robuste - Changepoints détectés") +
+  theme_minimal()
+
+```
+
+
+
+```{r }
+nwl2=df$X3
+length(data_vector)
+nwl2 <- na.omit(nwl2)
+length(data_vector)
+```
+```{r}
+ggplot(df, aes(x = seq_along(X3), y = nwl2)) +
+  geom_line(color = "steelblue", linewidth= 1) +
+  labs(title = "Évolution de la colonne X1",
+       x = "Index des lignes",
+       y = "Valeurs de X1") +
+  theme_minimal()
+```
+
+```{r}
+res <- run_bocpd(nwl2)
+
+# Changepoints détectés
+cat("Changepoints détectés :\n")
+print(res$changepoints)
+
+# ------------------------------
+# Visualisation avec ggplot2
+# ------------------------------
+df_plot <- data.frame(Index = 1:length(res$x), Value = res$x)
+changepoints <- res$changepoints
+
+ggplot(df_plot, aes(x=Index, y=Value)) +
+  geom_line(color="blue") +
+  geom_vline(xintercept = changepoints, color="red", linetype="dashed", linewidth=1) +
+  ggtitle("BOCPD robuste - Changepoints détectés") +
+  theme_minimal()
+
+```
+
+
+```{r}
+fprd1=df$X6
+length(fprd1)
+fprd1 <- na.omit(fprd1)
+
+```
+```{r}
+ggplot(df, aes(x = seq_along(X6), y = X6)) +
+  geom_line(color = "steelblue", linewidth= 1) +
+  labs(title = "Évolution de la colonne X1",
+       x = "Index des lignes",
+       y = "Valeurs de X1") +
+  theme_minimal()
+```
+```{r}
+run_bocpd <- function(data_vector, max_run_length=400, hazard_prob=1/20) {
+  x <- na.omit(data_vector)
+  prior_n <- min(50, length(x))
+  mu0    <- mean(x[1:prior_n])
+  s2     <- var(x[1:prior_n])
+  kappa0 <- 0.0001
+  alpha0 <- 1.0
+  beta0  <- var(fprd1[1:50])*0.25
+  
+  hazard_func <- function(r) hazard_prob
+  
+  res <- bocpd_trunc(x, L=max_run_length, hazard=hazard_func,
+                     mu0=mu0, kappa0=kappa0, alpha0=alpha0, beta0=beta0)
+  res$x <- x
+  return(res)
+}
+
+# ------------------------------
+# Exemple d’utilisation
+# ------------------------------
+
+# Remplacer df$X1 par la colonne de ton jeu de données
+res3 <- run_bocpd(fprd1)
+
+# Changepoints détectés
+cat("Changepoints détectés :\n")
+print(res3$changepoints)
+
+# ------------------------------
+# Visualisation avec ggplot2
+# ------------------------------
+df_plot <- data.frame(Index = 1:length(fprd1), Value = fprd1)
+changepoints <- res3$changepoints
+df_plot
+ggplot(df_plot, aes(x=Index, y=Value)) +
+  geom_line(color="blue") +
+  geom_vline(xintercept = changepoints, color="red", linetype="dashed", linewidth=1) +
+  ggtitle("BOCPD robuste - Changepoints détectés") +
+  theme_minimal()
+
+```
+```{r}
+
+
+```
+
+
+```{r}
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
