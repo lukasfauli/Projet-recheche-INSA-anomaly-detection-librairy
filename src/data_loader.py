@@ -1,14 +1,14 @@
 import sys
 from pathlib import Path
 import tarfile
-# import gdown
+import gdown
 import pandas as pd
 
 config_dir = "../config"
 if config_dir not in sys.path:
     sys.path.insert(0, config_dir)
 
-from config import google_folder_id as file_id
+from config import google_folder_id as default_file_id
 
 
 def download_gdrive_tar(file_id: str, tar_path: str | Path) -> Path:

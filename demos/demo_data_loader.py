@@ -1,4 +1,3 @@
-from loader import load_data
 import sys
 
 config_dir = "../config"
@@ -6,6 +5,7 @@ if config_dir not in sys.path:
     sys.path.insert(0, config_dir)
 
 from config import google_folder_id as id
+
 
 data_dict, extracted_dir = load_data(
     # common CSV options if needed:
