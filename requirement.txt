@@ -1,0 +1,11 @@
+# all the packages to install
+
+
+#create an environment
+conda create --name name_of_you_env python=3.10 numpy pandas
+conda activate name_of_you_env
+conda deactivate name_of_you_env
+#install package
+    conda install pytorch -c forge
+    conda install
+
