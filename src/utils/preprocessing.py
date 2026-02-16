@@ -71,7 +71,12 @@ def cleaning_dataframe(df)->pd.DataFrame:
     :return: a clean data frame ready to be use
     :rtype: DataFrame
     '''
-    return df
+    df_cleaned = df.copy()
+    drop_duplicate(df_cleaned)
+    drop_NAn(df_cleaned)
+    convert_datetime(df_cleaned)
+
+    return df_cleaned
 
 def preprocess_all_sessions(sessions_dict: dict) -> dict:
 
@@ -84,7 +89,7 @@ def preprocess_all_sessions(sessions_dict: dict) -> dict:
     Returns:
         dict: A dictionnary with the cleaned DataFrames.
     """
-    cleaned_sessions = {}
+    cleaned_sessions = dict()
     for session_name, df in sessions_dict.items():
         print(f"Nettoyage de la session : {session_name}")
         cleaned_df = cleaning_dataframe(df)
