@@ -88,7 +88,14 @@ def renorm_time(df, datetime_column="datetime") -> pd.DataFrame:
     return df
 
 
-
+def convert_dict_to_dataframe(dictionnary) -> pd.DataFrame:
+     '''
+     Convert the data from dictionnary to dataframe
+     :param dict: dictionnary
+     :return: a dataframe
+     :rtype: DataFrame
+     '''
+     return pd.DataFrame(dictionnary)
 
 def clean_dataframe(df, inplace=True) -> pd.DataFrame:
     '''
