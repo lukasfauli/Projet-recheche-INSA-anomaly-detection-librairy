@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
     """
@@ -51,3 +52,34 @@ def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
         plt.show()
 
     return is_outlier
+
+def detect_constant(signal, tol=0.01, min_length=10, verbose=False, plot = False):
+    signal = np.asarray(signal)
+    grad = np.abs(np.diff(signal))
+    idx = None
+    
+    for i in range(len(grad) - min_length):
+        if np.nanmax(grad[i:]) < tol:
+            idx = i
+            break
+    
+    if verbose:
+        if idx is not None:
+            print(f"Signal becomes constant at index {idx}")
+        else:
+            print("No constant region detected.")
+            
+    if plot:
+        plt.figure()
+        plt.plot(signal)
+        
+        if idx is not None:
+            plt.axvline(idx, linestyle='--')
+            plt.scatter(idx, signal[idx])
+        
+        plt.title("Signal with Detected Constant Region")
+        plt.xlabel("Index")
+        plt.ylabel("Signal value")
+        plt.show()
+    
+    return idx
