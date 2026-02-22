@@ -22,8 +22,14 @@ def drop_duplicate(df, inplace=True,Verbose=False) -> pd.DataFrame:
     :rtype: DataFrame
     '''
     len_before = len(df)
-    df.drop_duplicates(inplace=inplace)
-    rows_removed = len_before - len(df)
+
+    if inplace:
+        df.drop_duplicates(inplace=inplace)
+        df_cleaned=df
+    else:
+        df_cleaned=df.drop_duplicates(inplace=inplace)
+    
+    rows_removed = len_before - len(df_cleaned)
 
     # Print the number of rows removed, if any. False by default
     if Verbose:
@@ -32,7 +38,7 @@ def drop_duplicate(df, inplace=True,Verbose=False) -> pd.DataFrame:
         elif rows_removed == 0:
             vprint("INFO: No duplicate lines have been found.")
 
-    return df
+    return df_cleaned
 
 
 def drop_nan(df,inplace=True,Verbose=False) -> pd.DataFrame:
@@ -43,18 +49,22 @@ def drop_nan(df,inplace=True,Verbose=False) -> pd.DataFrame:
     :return: the cleaned data_frame
     :rtype: DataFrame
     '''
+    len_before = len(df)
 
-    len_before=len(df)
-    df.dropna(inplace=inplace)
-    rows_removed = len_before - len(df)
-
+    if inplace:
+        df.dropna(inplace=inplace)
+        df_cleaned=df
+    else:
+        df_cleaned=df.dropna(inplace=inplace)
+    
+    rows_removed = len_before - len(df_cleaned)
     # Print the number of rows removed, if any. False by default
     if Verbose:
         if rows_removed > 0:
             print(f"INFO: {rows_removed} lines have been removed.")
         elif rows_removed == 0:
             print("INFO: No lines with NaN values have been found.")
-    return df
+    return df_cleaned
 
 
 def convert_datetime(df, inplace=True, datetime_column="datetime") -> pd.DataFrame:
