@@ -36,9 +36,9 @@ def plot_hist(df, col_name_X, bins=100, ax=None):
      ax.set_yscale("log")   # use log scale to flatten peaks and raise small values
      ax.set_ylabel("Number of occurence (Log)")
      ax.set_title(f"Discontinuty analysis of {col_name_X}")
-
-     if created_fig:
-          plt.show()
+     return ax
+     #if created_fig:
+     #     plt.show()
 
 def boxplot(df,col_name,message=True, rotation=0):
      sns.boxplot(data=df[col_name])
