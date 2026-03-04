@@ -24,8 +24,8 @@ def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
             rolling statistics are not yet computed (NaN).
     """
     
-    rolling_mean = df_column.rolling(window=window_size).mean()
-    rolling_std = df_column.rolling(window=window_size).std()
+    rolling_mean = df_column.rolling(window=window_size, center = True).mean()
+    rolling_std = df_column.rolling(window=window_size, center = True).std()
 
     upper_bound = rolling_mean + (threshold * rolling_std)
     lower_bound = rolling_mean - (threshold * rolling_std)
@@ -59,10 +59,10 @@ def detect_constant(signal, tol=0.01, min_length=10, verbose=False, plot = False
     idx = None
     
     for i in range(len(grad) - min_length):
-        if np.nanmax(grad[i:]) < tol:
+        if np.nanmax(grad[i:i+min_length]) < tol:
             idx = i
             break
-    
+
     if verbose:
         if idx is not None:
             print(f"Signal becomes constant at index {idx}")

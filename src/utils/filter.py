@@ -121,7 +121,7 @@ def fourier_denoise(x, threshold = 0.0, keep_ratio = 0.0):
     
     return np.real(filtered_signal)
 
-def wavelet_denoise(x, keep_ratio=0.0, threshold = 0.0, wavelet="db4", level=1, soft_thresholding=False,
+def wavelet_denoise(x, keep_ratio=0.0, threshold = 0.0, wavelet="db4", level=None, soft_thresholding=False,
                     verbose = True):
     """
     Remove the coef with amplitude smaller than threshold or keep the largest wavelet coefs. 
@@ -140,7 +140,7 @@ def wavelet_denoise(x, keep_ratio=0.0, threshold = 0.0, wavelet="db4", level=1, 
         np.ndarray: denoised signal.
     """
     x = np.asarray(x)
-    L = min(pywt.dwt_max_level(len(x), wavelet),level)
+    L = pywt.dwt_max_level(len(x), wavelet) if level is None else min(pywt.dwt_max_level(len(x), wavelet),level)
     xwav = pywt.wavedecn(data=x, wavelet=wavelet, mode="per", level=L)
     arr, coef_slices = pywt.coeffs_to_array(xwav)
     arr_flat = arr.flatten()
@@ -176,9 +176,9 @@ def wavelet_denoise(x, keep_ratio=0.0, threshold = 0.0, wavelet="db4", level=1, 
 
     return Srec
 
-def wavelet_plot_coef(x, wavelet="db4", level=1):
+def wavelet_plot_coef(x, wavelet="db4", level=None):
     x = np.asarray(x)
-    L = min(pywt.dwt_max_level(len(x), wavelet),level)
+    L = pywt.dwt_max_level(len(x), wavelet) if level is None else min(pywt.dwt_max_level(len(x), wavelet),level)
     xwav = pywt.wavedecn(data=x, wavelet=wavelet, mode="per", level=L)
     arr, coef_slices = pywt.coeffs_to_array(xwav)
     arr = np.abs(arr.flatten())
@@ -190,7 +190,7 @@ def wavelet_plot_coef(x, wavelet="db4", level=1):
     plt.show()
 
 
-def wavelet_plot_mra(x, wavelet="db4", level=1):
+def wavelet_plot_mra(x, wavelet="db4", level=None):
     """
     Plot a wavelet multiresolution analysis (MRA) like the classic D1..Dn, S_n stacked figure.
     x: 1D array
@@ -199,7 +199,7 @@ def wavelet_plot_mra(x, wavelet="db4", level=1):
     """
     x = np.asarray(x, dtype=float)
     N = x.size
-    L = min(pywt.dwt_max_level(N, wavelet),level)
+    L = pywt.dwt_max_level(len(x), wavelet) if level is None else min(pywt.dwt_max_level(len(x), wavelet),level)
 
     # Decompose
     coeffs = pywt.wavedec(x, wavelet, level=L)
@@ -247,3 +247,17 @@ def wavelet_plot_mra(x, wavelet="db4", level=1):
 
     plt.tight_layout()
     plt.show()
+
+def noise_estim(x, wavelet="db4", level=None):
+    """
+    Return the estimated standard deviation of a signal using wavelet decomposition and the Signal to Noise Ratio (SNR)
+    x: 1D array
+    wavelet: e.g. 'db4', 'sym5', 'coif1', 'haar'
+    level: decomposition level  
+    """
+    x = np.asarray(x)
+    L = pywt.dwt_max_level(len(x), wavelet) if level is None else min(pywt.dwt_max_level(len(x), wavelet),level)
+    xwav = pywt.wavedecn(data=x, wavelet=wavelet, mode="per", level=L)
+    cD1 = xwav[-1]['d']
+    sigma = np.median(np.abs(cD1)) / 0.6745
+    return sigma
