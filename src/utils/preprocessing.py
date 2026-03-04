@@ -107,7 +107,7 @@ def convert_dict_to_dataframe(dictionnary) -> pd.DataFrame:
      '''
      return pd.DataFrame(dictionnary)
 
-def clean_dataframe(df, inplace=True) -> pd.DataFrame:
+def clean_dataframe(df, inplace=True,Verbose=False) -> pd.DataFrame:
     '''
     Combinaison of all the previous function in one 
     to call only one function to do the whole preprocessing
@@ -118,8 +118,8 @@ def clean_dataframe(df, inplace=True) -> pd.DataFrame:
     df_cleaned = df if inplace else df.copy()
     convert_datetime(df_cleaned, inplace=inplace)
     renorm_time(df, datetime_column="datetime")
-    drop_duplicate(df_cleaned, inplace=inplace)
-    drop_nan(df_cleaned, inplace=inplace)
+    drop_duplicate(df_cleaned, inplace=inplace,Verbose=Verbose)
+    drop_nan(df_cleaned, inplace=inplace,Verbose=Verbose)
     
     
 
