@@ -24,14 +24,17 @@ def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
             rolling statistics are not yet computed (NaN).
     """
     
-    rolling_mean = df_column.rolling(window=window_size).mean()
-    rolling_std = df_column.rolling(window=window_size).std()
+    rolling_mean = df_column.rolling(window=window_size,center=True).mean()
+    rolling_std = df_column.rolling(window=window_size,center=True).std()
 
     upper_bound = rolling_mean + (threshold * rolling_std)
     lower_bound = rolling_mean - (threshold * rolling_std)
 
     # Note: NaN values in bounds result in False during comparison
     is_outlier = (df_column > upper_bound) | (df_column < lower_bound)
+
+    # Calcul du taux d'anomalies en %
+    outlier_rate = (is_outlier.sum() / len(df_column)) * 100
 
     if verbose:
         plt.figure(figsize=(15, 7))
@@ -51,7 +54,7 @@ def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
         plt.legend()
         plt.show()
 
-    return is_outlier
+    return is_outlier,outlier_rate
 
 def detect_constant(signal, tol=0.01, min_length=10, verbose=False, plot = False):
     signal = np.asarray(signal)
