@@ -45,7 +45,7 @@ def polynomial_kernel(
 
 def stable_eigh_psd(M: np.ndarray, eps: float = 1e-12) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Symmetric eigendecomposition sorted descending.
+    Symmetric eigendecomposition sorted descending. The matrix M needs to be symmetric to stablelize the decomposition. 
     """
     M = 0.5 * (M + M.T)
     vals, vecs = np.linalg.eigh(M)
@@ -78,7 +78,7 @@ def greedy_kpca_subset(
     verbose: bool = False
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Greedy KPCA subset selection using pivoted kernel residual updates.
+    Greedy KPCA subset selection using pivoted kernel residual updates (Incomplete Cholesky factorization)
 
     Returns
     -------
@@ -172,30 +172,32 @@ def block_gkpca(
         verbose=verbose
     )
 
-    Xs = X_block[subset_idx]
+    Xs = X_block[subset_idx] #Subset data
 
     K_ss = kernel_fn(Xs, Xs)
-    eigvals, eigvecs = stable_eigh_psd(K_ss)
+    eigvals, eigvecs = stable_eigh_psd(K_ss) #eigenvector and eigenvalue to construct feature space
 
     if len(eigvals) == 0:
         raise RuntimeError("Degenerate subset kernel matrix.")
 
-    beta = eigvecs / np.sqrt(eigvals)[None, :]
+    beta = eigvecs / np.sqrt(eigvals)[None, :] #Map from Kernel space to feature space (From matrix K to high-dim space)
 
-    K_sb = kernel_fn(Xs, X_block)
-    Z = beta.T @ K_sb
+    K_sb = kernel_fn(Xs, X_block)   #Project to Kernel space
+    Z = beta.T @ K_sb #Project to feature space
 
+    # Perform PCA with the centered data
     Zc, mu = center_rows(Z)
 
-    C = Zc @ Zc.T
+    C = Zc @ Zc.T # covariance matrix
     evals_c, U = stable_eigh_psd(C)
     S = np.sqrt(np.maximum(evals_c, 0.0))
 
     if len(S) == 0:
         raise RuntimeError("Degenerate block covariance in reduced coordinates.")
 
-    Vt = (U.T @ Zc) / S[:, None]
+    Vt = (U.T @ Zc) / S[:, None] # Projection on KPCA space
 
+    # Extract the q principle componants
     if max_kpcs is not None:
         q = min(max_kpcs, len(S))
     elif var_keep is not None:
@@ -276,7 +278,7 @@ def merge_mult_gkpca_models(
     max_kpcs: Optional[int] = None
 ) -> MultiGKPCAModel:
     """
-    Merge one block-GKPCA model into the current global model.
+    Merge one block-GKPCA model into the current global model (Incremental KPCA)
     """
     if kernel_params is None:
         kernel_params = {}
@@ -348,7 +350,9 @@ def merge_mult_gkpca_models(
     alpha_new = alpha_new[:, :q]
     S_new = S_new[:q]
 
-    mean_new = 0.5 * (mean_a_u + mean_b_u)
+    wa = model.X_library.shape[0]
+    wb = block.Z.shape[1]
+    mean_new = (wa * mean_a_u + wb * mean_b_u) / (wa + wb)
 
     return MultiGKPCAModel(
         kernel_name=kernel_name,
