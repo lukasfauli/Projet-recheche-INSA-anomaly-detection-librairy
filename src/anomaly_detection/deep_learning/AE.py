@@ -4,6 +4,32 @@ from tensorflow.keras.layers import (Input, Conv1D, GRU, Reshape, Permute,
                                      Conv1DTranspose, TimeDistributed, Dense)
 from tensorflow.keras.layers import RepeatVector
 
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten, Reshape, Input
+
+def build_dnn_ae(time_steps, nb_features):
+    input_dim = time_steps * nb_features 
+    
+    model = Sequential(name="DNN_Autoencoder")
+
+    model.add(Input(shape=(time_steps, nb_features)))
+    model.add(Flatten()) 
+
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    
+    model.add(Dense(16, activation='relu'))
+    
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(64, activation='relu'))
+    
+    model.add(Dense(input_dim, activation='linear'))
+    
+    model.add(Reshape((time_steps, nb_features)))
+    
+    model.compile(optimizer='adam', loss='mse')
+    return model
+
 def build_gru_ae(time_steps, nb_features):
     model = Sequential()
     
