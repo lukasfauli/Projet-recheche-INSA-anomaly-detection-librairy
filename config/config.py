@@ -2,8 +2,11 @@ from dotenv import load_dotenv
 import os
 import sys
 
-load_dotenv('../.env')
+# Load .env from project root (parent of config directory)
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(dotenv_path)
 google_folder_id = os.getenv('google_data_folder_id')
+google_folder_id2 = os.getenv('google_data_folder_id2')
 
 def vprint(*args, **kwargs):
     if os.getenv('VERBOSE', '1') == '1':

@@ -8,8 +8,7 @@ config_dir = "../config"
 if config_dir not in sys.path:
     sys.path.insert(0, config_dir)
 
-from config import google_folder_id as default_file_id
-
+from config import google_folder_id, google_folder_id2
 
 def download_gdrive_tar(file_id: str, tar_path: str | Path) -> Path:
     tar_path = Path(tar_path)
@@ -54,14 +53,59 @@ def load_csvs_from_folder(
     return out
 
 def load_data(
-    file_id: str = id,
+    file_id: str = google_folder_id,
     work_dir: str | Path = "gdrive_tar_data",
     tar_name: str = "data.tar",
     pattern: str = "*.csv",
     **read_csv_kwargs
 ):
     work_dir = Path(work_dir)
-    tar_path = download_gdrive_tar(file_id, work_dir / tar_name)
-    extracted = extract_tar(tar_path, work_dir / "extracted")
-    data = load_csvs_from_folder(extracted, pattern=pattern, **read_csv_kwargs)
-    return data, extracted
+    tar_path = work_dir / tar_name
+    extracted_base = work_dir / "extracted"
+    
+    # Determine dataset type based on file_id
+    if file_id == google_folder_id:
+        dataset_type = "ARAG"
+    elif file_id == google_folder_id2:
+        dataset_type = "CAST"
+    else:
+        dataset_type = None
+    
+    # Check if data is already extracted (look for folder containing dataset type)
+    data_exists = False
+    data_folder = None
+    
+    if extracted_base.exists():
+        for folder in extracted_base.iterdir():
+            if folder.is_dir() and dataset_type and dataset_type in folder.name:
+                data_exists = True
+                data_folder = folder
+                break
+    
+    if data_exists:
+        print(f"Extracted data found at: {data_folder}")
+    else:
+        # Data not extracted, check if tar exists
+        if tar_path.exists():
+            print(f"Tar file found, extracting...")
+            extract_tar(tar_path, extracted_base)
+        else:
+            # Tar doesn't exist either, download and extract
+            print(f"Data not found, downloading...")
+            tar_path = download_gdrive_tar(file_id, tar_path)
+            print(f"Extracting data...")
+            extract_tar(tar_path, extracted_base)
+        
+        # Find the extracted folder
+        if extracted_base.exists():
+            for folder in extracted_base.iterdir():
+                if folder.is_dir() and dataset_type and dataset_type in folder.name:
+                    data_folder = folder
+                    break
+    
+    if data_folder is None or not data_folder.exists():
+        raise FileNotFoundError(f"Data folder containing '{dataset_type}' not found in: {extracted_base}")
+    
+    print(f"Loading {dataset_type} data from: {data_folder}")
+    data = load_csvs_from_folder(data_folder, pattern=pattern, **read_csv_kwargs)
+    return data, data_folder
