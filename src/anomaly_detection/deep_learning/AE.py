@@ -82,3 +82,27 @@ def build_cnn_gru_ae(time_steps, nb_features):
     model = Model(inputs=input_layer, outputs=output_layer)
     model.compile(optimizer='adam', loss='mse')
     return model
+
+
+
+
+
+def build_simple_ae(input_dim=15, latent_dim=3):
+    model = Sequential(name="Simple_Autoencoder")
+    
+    # Entrée : les 15 capteurs en direct
+    model.add(Input(shape=(input_dim,)))
+    
+    # Encodeur
+    model.add(Dense(10, activation='relu')) 
+    # Espace Latent (3D pour l'interprétabilité)
+    model.add(Dense(latent_dim, activation='relu', name="latent_layer"))
+    
+    # Décodeur
+    model.add(Dense(10, activation='relu'))
+    # Sortie : on reconstruit les 15 capteurs
+    model.add(Dense(input_dim, activation='linear'))
+    
+    model.compile(optimizer='adam', loss='mse')
+    return model
+
