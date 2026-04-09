@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import utils.preprocessing as preprocessing
+import os
 
 def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
     """
@@ -41,20 +43,45 @@ def zscore_glissant(window_size, df_column, verbose=True, threshold=3):
         x = df_column.index
 
         plt.plot(x, df_column, color='gray', alpha=0.5, label='Signal')
-        plt.plot(x, rolling_mean, color='blue', alpha=0.8, label='Moving Average')
+        plt.plot(x, rolling_mean, color='blue', alpha=0.8, label='Moving average')
         
         plt.plot(x, upper_bound, 'r--', alpha=0.8, label=f'Boundaries ({threshold}σ)')
         plt.plot(x, lower_bound, 'r--', alpha=0.8)
         
         plt.scatter(x[is_outlier], df_column[is_outlier], color='red', label='Outliers')
-        
-        plt.title(f"Anomaly Detection on {df_column.name} (Window: {window_size})")
+        plt.title(f"Outlier detection on {df_column.name} (Window: {window_size})")
         plt.xlabel("Index")
         plt.ylabel("Value")
         plt.legend()
         plt.show()
 
     return is_outlier,outlier_rate
+
+
+def audit_sessions_zscore(data_dict, sensor_name, window_size, threshold=3):
+    """
+    Parcourt toutes les sessions du dictionnaire, nettoie les données,
+    et calcule le taux d'outliers pour un capteur spécifique.
+    
+    Returns:
+        pd.DataFrame: Un tableau avec l'ID de la session et son taux d'outliers.
+    """
+    audit_results = []
+    
+    for key in data_dict.keys():
+        # 1. Extraction et nettoyage
+        df_temp = data_dict[key].copy()
+        df_temp = preprocessing.clean_dataframe(df_temp)
+        session_id = os.path.splitext(os.path.basename(key))[0]
+            # 2. Appel de ta fonction (en mode silencieux pour ne pas afficher 100 graphes)
+            # On récupère le vecteur de booléens
+        is_outlier,outlier_rate = zscore_glissant(window_size=window_size, df_column=df_temp[sensor_name], threshold=threshold, verbose=False)
+            
+        audit_results.append({'session_id': session_id,'outlier_rate_%': round(outlier_rate, 4),'total_points': len(df_temp)})
+            
+    # Transformation en DataFrame pour faciliter le tri et l'affichage
+    df_audit = pd.DataFrame(audit_results).sort_values(by='outlier_rate_%', ascending=False)
+    return df_audit
 
 def detect_constant(signal, tol=0.01, min_length=10, verbose=False, plot = False):
     signal = np.asarray(signal)
