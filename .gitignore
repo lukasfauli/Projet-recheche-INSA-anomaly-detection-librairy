@@ -79,9 +79,7 @@ env.bak/
 venv.bak/
 
 
-<<<<<<< HEAD
-anl01p1-data_exploration.ipynb
 .vscode/
-=======
+
 *.parquet
->>>>>>> lukas
+
