@@ -7,23 +7,29 @@ from tensorflow.keras.layers import RepeatVector
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input
 
-def build_dnn_ae(time_steps, nb_features):
+def build_dnn_ae(time_steps, nb_features, latent_dim):
+    """
+    latent_dim : la taille du goulot d'étranglement (espace latent)
+    """
     input_dim = time_steps * nb_features 
     
-    model = Sequential(name="DNN_Autoencoder")
+    model = Sequential(name=f"DNN_AE_Latent_{latent_dim}")
 
     model.add(Input(shape=(time_steps, nb_features)))
-    model.add(Flatten()) 
+    model.add(Flatten()) # Devient un vecteur de 75
 
     model.add(Dense(64, activation='relu'))
     model.add(Dense(32, activation='relu'))
     
-    model.add(Dense(16, activation='relu'))
+    # latent space
+    model.add(Dense(latent_dim, activation='relu', name="Latent_Space"))
     
+  
     model.add(Dense(32, activation='relu'))
     model.add(Dense(64, activation='relu'))
     
     model.add(Dense(input_dim, activation='linear'))
+    
     
     model.add(Reshape((time_steps, nb_features)))
     
