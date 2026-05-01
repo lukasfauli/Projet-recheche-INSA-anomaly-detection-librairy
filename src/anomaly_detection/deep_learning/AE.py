@@ -3,7 +3,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import (Input, Conv1D, GRU, Reshape, Permute, 
                                      Conv1DTranspose, TimeDistributed, Dense)
 from tensorflow.keras.layers import RepeatVector
-
+import pandas as pd
+import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input
 
@@ -112,3 +113,21 @@ def build_simple_ae(input_dim=15, latent_dim=3):
     model.compile(optimizer='adam', loss='mse')
     return model
 
+def rolling_correlation(y_true, y_pred, window=20):
+    """
+    Calcule la corrélation glissante entre le signal réel et reconstruit.
+    y_true, y_pred: arrays 1D
+    window: taille de la fenêtre (ex: 20 points)
+    """
+    s1 = pd.Series(y_true)
+    s2 = pd.Series(y_pred)
+    
+    # Calcul de la corrélation de Pearson sur la fenêtre glissante
+    # On remplace les NaN (début de fenêtre) par 1.0 (corrélation parfaite par défaut)
+    correls = s1.rolling(window=window).corr(s2).fillna(1.0).values
+    
+    # Gestion des cas où le signal est plat (std=0 -> corr=NaN)
+    # Si les deux sont plats et égaux, corr = 1. Si un seul est plat, on laisse 0
+    correls = np.nan_to_num(correls, nan=0.0)
+    
+    return correls
