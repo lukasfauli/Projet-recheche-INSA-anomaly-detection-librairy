@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 
 class AnomalyDetectorIF:
-    def __init__(self, contamination=0.05, random_state=42):
+    def __init__(self, contamination, random_state=42, max_samples=256):
         """
         Initialise le modèle Isolation Forest.
         contamination : proportion attendue d'anomalies (ex: 0.05 pour 5%)
