@@ -9,7 +9,7 @@ class AnomalyDetectorIF:
         Initialise le modèle Isolation Forest.
         contamination : proportion attendue d'anomalies (ex: 0.05 pour 5%)
         """
-        self.model = IsolationForest(contamination=contamination, random_state=random_state)
+        self.model = IsolationForest(contamination=contamination, random_state=random_state,max_samples=max_samples)
         self.features = None
 
     def fit(self, df, features):
